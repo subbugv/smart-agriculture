@@ -1,25 +1,14 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Contract } from "@ethersproject/contracts";
-import { getDefaultProvider } from "@ethersproject/providers";
-import { useQuery } from "@apollo/react-hooks";
+// import { getDefaultProvider } from "@ethersproject/providers";
+// import { ethers } from "ethers";
+// import { useQuery } from "@apollo/react-hooks";
 
-import { Body, Button, Header, Image, Link } from "./components";
-import logo from "./ethereumLogo.png";
+import { Body, Button, Header } from "./components";
 import useWeb3Modal from "./hooks/useWeb3Modal";
 
 import { addresses, abis } from "@project/contracts";
-import GET_TRANSFERS from "./graphql/subgraph";
-
-async function readOnChainData() {
-  // Should replace with the end-user wallet, e.g. Metamask
-  const defaultProvider = getDefaultProvider();
-  // Create an instance of an ethers.js Contract
-  // Read more about ethers.js on https://docs.ethers.io/v5/api/contract/contract/
-  const ceaErc20 = new Contract(addresses.ceaErc20, abis.erc20, defaultProvider);
-  // A pre-defined address that owns some CEAERC20 tokens
-  const tokenBalance = await ceaErc20.balanceOf("0x3f8CB69d9c0ED01923F11c829BaE4D9a4CB6c82C");
-  console.log({ tokenBalance: tokenBalance.toString() });
-}
+// import GET_TRANSFERS from "./graphql/subgraph";
 
 function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal }) {
   return (
@@ -38,34 +27,140 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal }) {
 }
 
 function App() {
-  const { loading, error, data } = useQuery(GET_TRANSFERS);
+  // const { loading, error, data } = useQuery(GET_TRANSFERS);
   const [provider, loadWeb3Modal, logoutOfWeb3Modal] = useWeb3Modal();
+  const [signer, setSigner] = useState();
+  const [message, setMessage] = useState("");
+  const [temp, setTemp] = useState("");
+  const [voilationDetails, setVoilationDetails] = useState();
 
-  React.useEffect(() => {
-    if (!loading && !error && data && data.transfers) {
-      console.log({ transfers: data.transfers });
+  // React.useEffect(() => {
+  //   if (!loading && !error && data && data.transfers) {
+  //     console.log({ transfers: data.transfers });
+  //   }
+  // }, [loading, error, data]);
+
+  const contractInstance = (providerOrSigner) => {
+    const storageContract = new Contract(
+      addresses.contractStorageAddress,
+      abis.storage,
+      providerOrSigner
+    );
+    return storageContract;
+  };
+
+  const addSeed = async () => {
+    const contract = contractInstance(signer);
+    contract
+      .addSeed("Tomatoes", "1", 100, 25, 34, 70, 20)
+      .then((res) => console.log(res));
+  };
+
+  const triggerTempVoilation = async () => {
+    if (temp) {
+      const contract = contractInstance(signer);
+      await contract.temperatureSelfCheck(temp).then((res) => console.log(res));
+      contract.once(
+        "TemperatureViolation",
+        (address, msg, actualTemp, otpimumTemp) => {
+          setVoilationDetails({
+            temp: {
+              address,
+              msg,
+              actual: actualTemp,
+              optimum: otpimumTemp,
+            },
+          });
+        }
+      );
+      setTemp("");
+    } else {
+      setMessage("Please enter temperature");
     }
-  }, [loading, error, data]);
+  };
+
+  const triggerHumVoilation = async () => {
+    const contract = contractInstance(signer);
+    await contract.temperatureSelfCheck(70).then((res) => console.log(res));
+    contract.once(
+      "HummidityViolation",
+      (address, msg, actualHum, otpimumHum) => {
+        console.log(address, msg, actualHum.toNumber(), otpimumHum.toNumber());
+      }
+    );
+  };
+
+  const triggerLightExpoVoilation = async () => {
+    const contract = contractInstance(signer);
+    await contract.lightExpoSelfCheck(15).then((res) => console.log(res));
+    contract.once(
+      "LightExposureViolation",
+      (address, msg, actualLightExpo, otpimumLightExpo) => {
+        console.log(
+          address,
+          msg,
+          actualLightExpo.toNumber(),
+          otpimumLightExpo.toNumber()
+        );
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (provider) {
+      const signer = provider.getSigner();
+      setSigner(signer);
+    }
+  }, [provider]);
+
+  const tempChange = (e) => {
+    setMessage("");
+    if (voilationDetails?.temp)
+      setVoilationDetails();
+    setTemp(e.target.value);
+  };
+
+  const voilationInfo = (info) => {
+      return (
+        <div>
+          {`Storage Address:  ${info?.address} `}
+          <br />
+          {`Message: ${info?.msg}`}
+          <br />
+          {`Actual: ${info?.actual}`}
+          <br />
+          {`Optimum: ${info?.optimum}`}
+        </div>
+      );
+  };
 
   return (
     <div>
       <Header>
-        <WalletButton provider={provider} loadWeb3Modal={loadWeb3Modal} logoutOfWeb3Modal={logoutOfWeb3Modal} />
+        <WalletButton
+          provider={provider}
+          loadWeb3Modal={loadWeb3Modal}
+          logoutOfWeb3Modal={logoutOfWeb3Modal}
+        />
       </Header>
       <Body>
-        <Image src={logo} alt="react-logo" />
-        <p>
-          Edit <code>packages/react-app/src/App.js</code> and save to reload.
-        </p>
-        {/* Remove the "hidden" prop and open the JavaScript console in the browser to see what this function does */}
-        <Button hidden onClick={() => readOnChainData()}>
-          Read On-Chain Balance
+        <Button onClick={() => addSeed()}>Add Seed</Button>
+        <input
+          value={temp}
+          onChange={tempChange}
+          placeholder="Enter Temparature"
+        />
+        {message ? <p>{message}</p> : ""}
+        <Button onClick={() => triggerTempVoilation()}>
+          Trigger Temperature Voilation
         </Button>
-        <Link href="https://ethereum.org/developers/#getting-started" style={{ marginTop: "8px" }}>
-          Learn Ethereum
-        </Link>
-        <Link href="https://reactjs.org">Learn React</Link>
-        <Link href="https://thegraph.com/docs/quick-start">Learn The Graph</Link>
+        {voilationDetails?.temp ? voilationInfo(voilationDetails?.temp) : ""}
+        <Button onClick={() => triggerHumVoilation()}>
+          Trigger Humidity Voilation
+        </Button>
+        <Button onClick={() => triggerLightExpoVoilation()}>
+          Trigger Light Exposure Voilation
+        </Button>
       </Body>
     </div>
   );
