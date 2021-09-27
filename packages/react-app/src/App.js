@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Contract } from "@ethersproject/contracts";
-// import { getDefaultProvider } from "@ethersproject/providers";
-// import { ethers } from "ethers";
-// import { useQuery } from "@apollo/react-hooks";
+import contractInstanceProvider from "./hooks/ContractInstance";
+import EventsLogTable from "./components/Table";
 
 import { Body, Button, Header } from "./components";
 import useWeb3Modal from "./hooks/useWeb3Modal";
 
 import { addresses, abis } from "@project/contracts";
-// import GET_TRANSFERS from "./graphql/subgraph";
 
 function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal }) {
   return (
@@ -27,7 +25,6 @@ function WalletButton({ provider, loadWeb3Modal, logoutOfWeb3Modal }) {
 }
 
 function App() {
-  // const { loading, error, data } = useQuery(GET_TRANSFERS);
   const [provider, loadWeb3Modal, logoutOfWeb3Modal] = useWeb3Modal();
   const [signer, setSigner] = useState();
   const [message, setMessage] = useState({});
@@ -37,12 +34,7 @@ function App() {
   const [seedDetails, setSeedDetails] = useState({});
   const [transaction, setTransaction] = useState(false);
   const [voilationDetails, setVoilationDetails] = useState();
-
-  // React.useEffect(() => {
-  //   if (!loading && !error && data && data.transfers) {
-  //     console.log({ transfers: data.transfers });
-  //   }
-  // }, [loading, error, data]);
+  const [voilationEventsLog, setVoilationEventsLog] = useState([]);
 
   const contractInstance = (providerOrSigner) => {
     const storageContract = new Contract(
@@ -145,6 +137,25 @@ function App() {
       setSigner(signer);
     }
   }, [provider]);
+
+  useEffect(() => {
+      let events = [];
+      const eventsLog = async () =>  {
+        const contract = await contractInstanceProvider();
+        await contract.queryFilter( "TemperatureViolation", 9024471, "latest").then(res => {
+          events = [ ...events, ...res];
+        });
+        await contract.queryFilter( "HummidityViolation", 9024471, "latest").then(res => {
+          events = [ ...events, ...res];
+        });
+        await contract.queryFilter( "LightExposureViolation", 9024471, "latest").then(res => {
+          events = [ ...events, ...res];
+          events.sort((a,b)=> b.blockNumber - a.blockNumber)
+          setVoilationEventsLog(events);
+        });
+      };
+    eventsLog();
+  }, [])
 
   const tempChange = (e) => {
     setMessage({
@@ -345,6 +356,27 @@ function App() {
           : transaction
           ? "Waiting For Blockchain Transaction To be Completed"
           : ""}
+        <div> Note: 
+          <ul>
+            <li>You must be an owner of the contract to "Add Seed".</li>
+            <li>You must be one of the storage owner to trigger any type of voilation.</li>
+            <li>If you are an owner of the contract or an owner of any of the storages, please click on "Connect Wallet" to "Add Seed" or to trigger any voilation</li>
+            <li>You need a crypto wallet installed as a browser extenstion to add seed or to trigger voilations</li>
+          </ul>
+        </div>
+        {voilationEventsLog.length > 0 ? (
+          <EventsLogTable events={voilationEventsLog} />
+        ) : (
+          <div
+            style={{
+              border: "solid 1px gray",
+              fontWeight: "bold",
+            }}
+          >
+            {" "}
+            Loading Previous Voilations. Please wait...{" "}
+          </div>
+        )}
       </Body>
     </div>
   );
