@@ -5,7 +5,7 @@ import WalletConnectProvider from "@walletconnect/web3-provider";
 
 // Enter a valid infura key here to avoid being rate limited
 // You can get a key for free at https://infura.io/register
-const INFURA_ID = "09574d52cb394473b2cb5fa991c34cde";
+const INFURA_ID = process.env.INFURA_ID;
 
 const NETWORK_NAME = "rinkeby";
 
