@@ -21,5 +21,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # subgraph
-packages/subgraph/build/
-packages/subgraph/src/types/
+packages/smart-agriculture/build/
+packages/smart-agriculture/src/types/
+packages/smart-agriculture/node_modules/
