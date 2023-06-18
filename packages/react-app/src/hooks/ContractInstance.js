@@ -2,7 +2,7 @@
 import { ethers } from "ethers";
 import abis from '@project/contracts/src/abis';
 
-const network = "goerli";
+const network = process.env.NETWORK_NAME;
 const contractInstance = async () => {
   const provider = await ethers.getDefaultProvider(network, {
     infura: {
