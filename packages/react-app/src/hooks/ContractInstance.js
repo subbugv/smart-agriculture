@@ -2,7 +2,7 @@
 import { ethers } from "ethers";
 import abis from '@project/contracts/src/abis';
 
-const network = "rinkeby";
+const network = "goerli";
 const contractInstance = async () => {
   const provider = await ethers.getDefaultProvider(network, {
     infura: {
