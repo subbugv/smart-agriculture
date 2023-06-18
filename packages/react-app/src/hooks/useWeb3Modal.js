@@ -7,7 +7,7 @@ import WalletConnectProvider from "@walletconnect/web3-provider";
 // You can get a key for free at https://infura.io/register
 const INFURA_ID = process.env.INFURA_ID;
 
-const NETWORK_NAME = "goerli";
+const NETWORK_NAME = process.env.NETWORK_NAME;
 
 function useWeb3Modal(config = {}) {
   const [provider, setProvider] = useState();
